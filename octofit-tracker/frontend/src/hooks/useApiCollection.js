@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getCollection } from '../api.js'
+import { apiUrl, getCollection } from '../api.js'
 
 export function useApiCollection(fetcher, endpoint) {
   const [items, setItems] = useState([])
@@ -14,7 +14,7 @@ export function useApiCollection(fetcher, endpoint) {
       setError('')
 
       try {
-        const response = await fetcher(endpoint, {
+        const response = await fetcher(apiUrl(endpoint), {
           signal: controller.signal,
         })
 

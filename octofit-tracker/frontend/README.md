@@ -6,9 +6,11 @@ layout and styling.
 
 ## API requests
 
-The frontend requests `/api/` endpoints on the same origin. During development,
-Vite proxies those requests to the backend on port `8000`, so no Codespaces API
-URL configuration or cross-origin browser access is required.
+The frontend builds API URLs from `VITE_CODESPACE_NAME`. In Codespaces, define
+it as the Codespace name (without the port or hostname suffix) in
+`octofit-tracker/frontend/.env.local`; API requests then use
+`https://<VITE_CODESPACE_NAME>-8000.app.github.dev`. If it is unset, requests
+fall back to `http://localhost:8000`.
 
 ## Development
 
