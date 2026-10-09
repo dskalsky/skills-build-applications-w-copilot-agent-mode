@@ -13,28 +13,28 @@ async function seedDatabase(): Promise<void> {
   try {
     await connectDatabase();
 
-    const teams = await Promise.all([
-      Team.findOneAndUpdate(
-        { name: 'Trailblazers' },
-        {
-          $set: {
-            description: 'A team that loves running outdoors and building endurance.',
-            totalPoints: 410,
-          },
-        },
-        { returnDocument: 'after', upsert: true, runValidators: true },
-      ),
-      Team.findOneAndUpdate(
-        { name: 'Pulse Crew' },
-        {
-          $set: {
-            description: 'A balanced team focused on strength, mobility, and cardio.',
-            totalPoints: 345,
-          },
-        },
-        { returnDocument: 'after', upsert: true, runValidators: true },
-      ),
-    ]);
+    const teamData = [
+      {
+        name: 'Trailblazers',
+        description: 'A team that loves running outdoors and building endurance.',
+        totalPoints: 410,
+      },
+      {
+        name: 'Pulse Crew',
+        description: 'A balanced team focused on strength, mobility, and cardio.',
+        totalPoints: 345,
+      },
+    ];
+    const teams = await Promise.all(
+      teamData.map(async (data) => {
+        const team = await Team.findOne({ name: data.name });
+        if (team) {
+          team.set(data);
+          return team.save();
+        }
+        return Team.create(data);
+      }),
+    );
 
     const teamByName = new Map(teams.map((team) => [team.name, team]));
     const userData = [
@@ -75,11 +75,12 @@ async function seedDatabase(): Promise<void> {
           throw new Error(`Unable to find seeded team "${teamName}"`);
         }
 
-        return User.findOneAndUpdate(
-          { username: user.username },
-          { $set: { ...user, team: team._id } },
-          { returnDocument: 'after', upsert: true, runValidators: true },
-        );
+        const existingUser = await User.findOne({ username: user.username });
+        if (existingUser) {
+          existingUser.set({ ...user, team: team._id });
+          return existingUser.save();
+        }
+        return User.create({ ...user, team: team._id });
       }),
     );
 
@@ -154,15 +155,18 @@ async function seedDatabase(): Promise<void> {
           throw new Error(`Unable to find seeded user "${username}"`);
         }
 
-        await Activity.findOneAndUpdate(
-          {
-            user: user._id,
-            activityType: activity.activityType,
-            performedAt: activity.performedAt,
-          },
-          { $set: { ...activity, user: user._id } },
-          { returnDocument: 'after', upsert: true, runValidators: true },
-        );
+        const filter = {
+          user: user._id,
+          activityType: activity.activityType,
+          performedAt: activity.performedAt,
+        };
+        const existingActivity = await Activity.findOne(filter);
+        if (existingActivity) {
+          existingActivity.set({ ...activity, user: user._id });
+          await existingActivity.save();
+        } else {
+          await Activity.create({ ...activity, user: user._id });
+        }
       }),
     );
 
@@ -180,19 +184,23 @@ async function seedDatabase(): Promise<void> {
           throw new Error(`Unable to find seeded user "${username}"`);
         }
 
-        await Leaderboard.findOneAndUpdate(
-          { user: user._id, period: 'weekly' },
-          {
-            $set: {
-              user: user._id,
-              team: user.team,
-              points,
-              rank,
-              period: 'weekly',
-            },
-          },
-          { returnDocument: 'after', upsert: true, runValidators: true },
-        );
+        const data = {
+          user: user._id,
+          team: user.team,
+          points,
+          rank,
+          period: 'weekly' as const,
+        };
+        const existingEntry = await Leaderboard.findOne({
+          user: user._id,
+          period: data.period,
+        });
+        if (existingEntry) {
+          existingEntry.set(data);
+          await existingEntry.save();
+        } else {
+          await Leaderboard.create(data);
+        }
       }),
     );
 
@@ -233,16 +241,29 @@ async function seedDatabase(): Promise<void> {
           { name: 'Shoulder and chest opener', durationMinutes: 10 },
         ],
       },
-    ];
+    ] satisfies {
+      name: string;
+      description: string;
+      category: string;
+      difficulty: 'beginner' | 'intermediate' | 'advanced';
+      durationMinutes: number;
+      exercises: {
+        name: string;
+        durationMinutes?: number;
+        repetitions?: number;
+      }[];
+    }[];
 
     await Promise.all(
-      workouts.map(({ name, ...workout }) =>
-        Workout.findOneAndUpdate(
-          { name },
-          { $set: { name, ...workout } },
-          { returnDocument: 'after', upsert: true, runValidators: true },
-        ),
-      ),
+      workouts.map(async (data) => {
+        const existingWorkout = await Workout.findOne({ name: data.name });
+        if (existingWorkout) {
+          existingWorkout.set(data);
+          await existingWorkout.save();
+        } else {
+          await Workout.create(data);
+        }
+      }),
     );
 
     console.log('Database seeding complete');

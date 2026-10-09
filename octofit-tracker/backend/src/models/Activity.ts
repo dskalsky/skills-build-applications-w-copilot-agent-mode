@@ -1,13 +1,4 @@
-import { Schema, Types, model } from 'mongoose';
-
-interface ActivityDocument {
-  user: Types.ObjectId;
-  activityType: 'run' | 'cycle' | 'swim' | 'strength' | 'yoga' | 'other';
-  durationMinutes: number;
-  distanceKm?: number;
-  points: number;
-  performedAt: Date;
-}
+import { Schema, model } from 'mongoose';
 
 const activitySchema = new Schema(
   {
@@ -25,4 +16,4 @@ const activitySchema = new Schema(
   { timestamps: true },
 );
 
-export default model<ActivityDocument>('Activity', activitySchema);
+export default model('Activity', activitySchema);
